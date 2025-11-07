@@ -4,7 +4,6 @@ import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
-import main.commands.HoroscopeDayCommand;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -54,7 +53,11 @@ public class HoroscopeBot extends TelegramLongPollingBot {
             case "/horoday":
                 if (userZodiacs.containsKey(chatId)) {
                     String zodiac = userZodiacs.get(chatId);
-                    sendText(chatId, "Твой гороскоп на день: " + HoroscopeDayCommand.getHoroscopeForSign(zodiac));
+                    try {
+                        sendText(chatId, "\uD83D\uDCAB Твой гороскоп на день \uD83D\uDCAB\n" + Parser.parseByZodiac(zodiac));
+                    } catch (Exception e) {
+                        throw new RuntimeException(e);
+                    }
                 } else {
                     sendText(chatId, "Сначала введи свою дату рождения через /start!");
                 }
