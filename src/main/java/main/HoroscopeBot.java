@@ -1,16 +1,14 @@
 package main;
 
+import main.handlers.CommandHandler;
+import main.handlers.MessageHandler;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
-import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.Update;
-import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
-
-import java.util.HashMap;
-import java.util.Map;
 
 public class HoroscopeBot extends TelegramLongPollingBot {
 
-    private final Map<Long, String> userZodiacs = new HashMap<>();
+    private final MessageHandler handler = new MessageHandler(this);
+    public final CommandHandler sender = new CommandHandler(this);
 
     @Override
     public String getBotUsername() {
@@ -27,63 +25,42 @@ public class HoroscopeBot extends TelegramLongPollingBot {
         if (!update.hasMessage() || !update.getMessage().hasText()) return;
 
         long chatId = update.getMessage().getChatId();
-        String text = update.getMessage().getText().trim();
+        String text = update.getMessage().getText().trim().toLowerCase();
 
-        switch (text.toLowerCase()) {
+        switch (text) {
             case "/start":
-                sendText(chatId, """
+                sender.sendMessageWithButtons(chatId, """
                         ✨ Добро пожаловать в Sign Speak! ✨
                         
-                        Узнай, что звёзды приготовили для вас сегодня!
-                        
-                        Введите свой день рождения в формате ДД.ММ (например 06.12).
-                        Чтобы узнать список команд — /help
+                        Узнай, что звёзды приготовили для тебя сегодня!
+                        Введите свой день рождения в формате ДД.ММ (например 06.12)
                         """);
                 break;
 
             case "/help":
-                sendText(chatId, """
+            case "помощь":
+                sender.sendMessageWithButtons(chatId, """
                         📜 Доступные команды:
                         /start - приветствие
                         /horoday - гороскоп на день
+                        /compatibility - совместимость
                         /help - список команд
                         """);
                 break;
 
             case "/horoday":
-                if (userZodiacs.containsKey(chatId)) {
-                    String zodiac = userZodiacs.get(chatId);
-                    try {
-                        sendText(chatId, "\uD83D\uDCAB Твой гороскоп на день \uD83D\uDCAB\n" + Parser.parseByZodiac(zodiac));
-                    } catch (Exception e) {
-                        throw new RuntimeException(e);
-                    }
-                } else {
-                    sendText(chatId, "Сначала введи свою дату рождения через /start!");
-                }
+            case "гороскоп на день":
+                handler.sendHoroscope(chatId);
+                break;
+
+            case "/compatibility":
+            case "совместимость":
+                handler.startCompatibility(chatId);
                 break;
 
             default:
-                var maybeDate = ZodiacUtils.tryParseDate(text);
-                if (maybeDate.isPresent()) {
-                    var date = maybeDate.get();
-                    String zodiac = ZodiacUtils.getZodiacByDate(date.getDayOfMonth(), date.getMonthValue());
-                    userZodiacs.put(chatId, zodiac);
-                    sendText(chatId, "Твой знак зодиака: " + zodiac);
-                } else {
-                    sendText(chatId, "❌ Неверная дата. Проверь формат (ДД.ММ) и убедись, что такая дата существует.");
-                }
+                handler.handleMessage(chatId, text);
                 break;
-
-        }
-    }
-
-    private void sendText(long chatId, String text) {
-        SendMessage message = new SendMessage(String.valueOf(chatId), text);
-        try {
-            execute(message);
-        } catch (TelegramApiException e) {
-            e.printStackTrace();
         }
     }
 }
